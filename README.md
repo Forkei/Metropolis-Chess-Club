@@ -6,18 +6,27 @@ The Chess Master is a sophisticated yet sharp-tongued player who runs the Chess 
 
 ## Project Vision
 
-**Phase 1 (Current)**: Agent system with subconscious memory management
-- Build the Chess Master character agent
-- Implement memory vector database (Weaviate)
-- Create scheduler for triggering agent at various game moments
-- Craft authentic personality through iteration
+**Phase 1 (Current)**: Agent system with memory, relationships, and personality
+- Build the Chess Master character agent (Gemini 3.1 Flash Lite)
+- Implement memory vector database (Weaviate) with semantic search
+- Create async scheduler for triggering agent at various game moments
+- Persist player profiles and conversation history (players are remembered)
+- Bootstrap Chess Master's lore (backstory, history, mentors)
+- Iterate on personality through test games and feedback
+
+Key Phase 1 features:
+- **Player relationships**: Agents remembers returning players, builds familiarity
+- **Conversation memory**: Stores recent messages so agent can reference them
+- **Lore system**: Chess Master has a personal history that players discover
+- **Async architecture**: Non-blocking triggers, background idle monitoring
 
 **Phase 2**: Chess engine integration
-- Integrate python-chess + Stockfish
-- Connect agent to game state (odds, moves, time)
-- Persist match history to database
+- Integrate python-chess + Stockfish (multiple difficulty levels)
+- Connect agent to game state (odds, moves, time, board hints)
+- Persist match history to Postgres database
+- Agent can comment on move quality, suggest improvements, tease blunders
 
-**Future**: Visual representation, multi-modal interaction, connection to other Metropolis properties
+**Future**: Visual representation, emotion display, multi-modal interaction, connection to other Metropolis properties
 
 ## Architecture
 
@@ -65,17 +74,25 @@ pip install -r requirements.txt
 Create a `.env` file:
 
 ```
-LLM_PROVIDER=claude
-CLAUDE_API_KEY=your_key_here
-CLAUDE_MODEL=claude-opus-4-20250514
+# Gemini (primary)
+LLM_PROVIDER=gemini
+GEMINI_API_KEY=your_gemini_key_here
+GEMINI_MODEL=gemini-3.1-flash-lite-preview
 
-# Or for Gemini:
-# GEMINI_API_KEY=your_key_here
+# Or Claude (fallback):
+# CLAUDE_API_KEY=your_claude_key_here
+# CLAUDE_MODEL=claude-opus-4-20250514
 
+# Weaviate
 WEAVIATE_EMBEDDED=true
 WEAVIATE_URL=http://localhost:8080
 
+# Database (for Phase 2, player profiles for Phase 1)
+# DATABASE_URL=sqlite:///chess_club.db
+
+# Game defaults
 DEFAULT_USERNAME=Opponent
+DEFAULT_DIFFICULTY=intermediate
 ```
 
 ### 3. Run
@@ -90,28 +107,59 @@ python -m agent.main
 ### Memory System
 
 Memories are stored in Weaviate with semantic search. Each memory includes:
-- **content**: The actual memory (what gets embedded)
-- **timestamp**: When created
-- **memory_type**: Category (player_behavior, game_context, personal_note, pattern, emotional, etc.)
-- **related_match_id**: Optional connection to a chess match
+- **content**: The actual memory text (what gets embedded)
+- **timestamp**: When created (preserved for recency awareness)
+- **memory_type**: Category (player_behavior, player_observation, game_context, personal_note, pattern, streak, emotional, lore)
+- **related_match_id**: Optional connection to a specific chess match
+- **related_player_id**: Optional connection to a specific player
 - **created_by**: Which agent created it (main_agent or subconscious)
-- **metadata**: Additional context
+- **metadata**: Additional context (player_name, difficulty, opening_name, etc.)
 
 **Why this schema?**
-- Type tags enable targeted retrieval (e.g., "find player behavior patterns")
+- Type tags enable targeted retrieval ("find player behavior patterns", "find my lore")
+- Timestamps are preserved, not decayed—the agent knows memory recency
+- `related_player_id` enables player-specific memory queries
 - Metadata allows extensibility without schema migration
 - `created_by` prevents memory loops (subconscious won't re-provide its own recent memories)
 
-### Scheduler & Trigger Points
+### Player Persistence
 
-The agent doesn't run continuously. Instead, specific events trigger it:
+For each player, the system maintains:
+- **Player Profile**: First seen, last played, total games, win/loss record, relationship state
+- **Conversation History**: Recent messages so the agent can reference them
+- **Memory Search**: Filtered by `related_player_id` for player-specific insights
+
+This enables:
+- Agent remembers returning players across sessions
+- Agent can reference past games: "You're playing the Sicilian again"
+- Agent builds familiarity and warmth over time
+- Newcomers get tested; familiar players get greeted warmly
+
+### Lore & Backstory
+
+Chess Master has a persistent personal history:
+- Tournament experiences, victories, losses, mentors, rivals
+- Personal quirks, philosophies, superstitions
+- Stored as `memory_type=lore` in Weaviate
+- Players gradually discover his backstory through natural conversation
+- Makes the character feel real and lived-in, not generic
+
+### Scheduler & Trigger Points (Async)
+
+The agent doesn't run continuously. Instead, specific events trigger it asynchronously:
 
 1. **before_match**: Setup, greet opponent
 2. **on_user_input**: User sends a message or performs an action
 3. **on_user_move**: After opponent makes a chess move
 4. **before_agent_move**: Agent decides what to do/say before its turn
-5. **idle_wait**: Periodic check if user is taking a long time
-6. **after_match**: Game concludes, agent reflects
+5. **idle_wait**: Periodic background check if user is taking a long time (APScheduler)
+6. **after_match**: Game concludes, agent reflects and saves
+
+**Async Architecture**:
+- All triggers are non-blocking
+- Idle monitoring runs in background via APScheduler
+- Player profiles and conversation history loaded lazily
+- Multiple matches can run concurrently without blocking
 
 This keeps the agent reactive and efficient while allowing multiple personality moments.
 

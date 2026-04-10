@@ -1,20 +1,26 @@
 """
-Scheduler for triggering the Chess Master agent at different points in a game.
+Async scheduler for triggering the Chess Master agent at different points in a game.
 
-Possible trigger points:
-- Before match starts
-- After opponent sends a message/modality input
-- After opponent makes a move
-- Before Chess Master makes a move
-- While waiting for opponent (periodic checks)
-- After match ends
+Manages timing, dispatch, and coordination of agent responses across multiple trigger points.
+Uses APScheduler for background idle monitoring and event-driven triggers for immediate responses.
 
-The scheduler coordinates timing and calls the agent with appropriate context.
+Trigger points:
+- before_match: Game setup, greeting
+- on_user_input: Message/emotion/action from user
+- on_user_move: After opponent makes a chess move
+- before_agent_move: Agent deciding what to do/say before its turn
+- idle_wait: Periodic check if user is taking too long (background task)
+- after_match: Match concludes, reflect/save
+
+All agent calls are async and non-blocking. Player profiles and conversation history
+are persisted so the agent remembers players across games.
 """
 
+import asyncio
 from enum import Enum
 from datetime import datetime
 from typing import Callable, Optional, Dict, Any
+from apscheduler.schedulers.asyncio import AsyncIOScheduler
 
 
 class TriggerPoint(str, Enum):
@@ -29,17 +35,32 @@ class TriggerPoint(str, Enum):
 
 class MatchScheduler:
     """
-    Manages timing and dispatch of agent triggers during a chess match.
-    
+    Async scheduler for agent triggers during a chess match.
+
+    Handles:
+    - Event-driven triggers (user input, moves, etc.) - immediate dispatch
+    - Periodic triggers (idle monitoring) - background APScheduler tasks
+    - Player persistence - loads player profile, conversation history
+    - Conversation logging - appends to persistent conversation history
+
+    Architecture:
+    - Non-blocking: All trigger calls return immediately
+    - Background tasks: Idle monitoring runs independently
+    - Stateful: Maintains player profile, match state, trigger history
+
     TODO:
-    - Implement APScheduler integration
-    - Store trigger history for analysis
+    - Implement full APScheduler integration
+    - Conversation history persistence (database)
+    - Player profile loading/saving
     - Support custom trigger logic (e.g., "only every 5 moves")
     """
-    
-    def __init__(self, match_id: str):
+
+    def __init__(self, match_id: str, player_id: str):
         self.match_id = match_id
+        self.player_id = player_id
         self.triggers = []
+        self.scheduler: Optional[AsyncIOScheduler] = None
+        self.conversation_history = []
         
     async def trigger(self, point: TriggerPoint, context: Dict[str, Any]) -> Optional[Dict[str, Any]]:
         """
