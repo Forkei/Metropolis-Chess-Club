@@ -159,8 +159,8 @@ See `agent/personality.md` for full character brief. Key points:
 ### TODOs
 
 - [ ] Weaviate Python client integration
-- [ ] Claude API wrapper with tool calling
-- [ ] Gemini API wrapper
+- [ ] Gemini API wrapper with tool calling (primary)
+- [ ] Claude API wrapper (fallback)
 - [ ] Main agent response generation & tool dispatching
 - [ ] Subconscious memory retrieval & filtering logic
 - [ ] Scheduler with APScheduler
@@ -169,14 +169,14 @@ See `agent/personality.md` for full character brief. Key points:
 
 ### Model Support
 
-Currently targeting:
-- **Claude**: Opus 4 (most capable), fallback to Sonnet
-- **Gemini**: 2.0 Flash (or latest available)
+**Primary**: Gemini 3.1 Flash Lite Preview
+- Lightweight and fast (ideal for subconscious agent)
+- Supports JSON structured output
+- Supports tool use / function calling
 
-Both should support:
-- Structured output (JSON)
-- Tool use / function calling
-- Reasonable context windows
+**Fallback**: Claude Opus 4 (if Gemini unavailable)
+- Supports JSON structured output
+- Excellent tool use capabilities
 
 ### Memory Database
 

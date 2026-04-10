@@ -78,15 +78,16 @@ Types: player_behavior, player_observation, game_context, personal_note, streak,
 ## Implementation Notes
 
 **Weaviate Embedding**: Use local sentence-transformers (all-MiniLM-L6-v2)
-**Models**: Claude Opus + Gemini Flash (both support JSON output and tool use)
+**Models**: Gemini 3.1 Flash Lite Preview (primary, lightweight & fast), Claude Opus (fallback)
 **Scheduler**: TODO - sync vs async decision
 
 ## Next Steps
 
 1. Weaviate client wrapper
-2. LLM API wrappers (Claude, Gemini)
-3. Main agent response generation
-4. Subconscious memory retrieval
+2. Gemini API wrapper with tool calling (primary)
+3. Claude API wrapper (fallback)
+4. Main agent response generation
+5. Subconscious memory retrieval
 5. Scheduler implementation
 6. Test suite with synthetic data
 7. Iterate on personality
