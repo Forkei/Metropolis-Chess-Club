@@ -1,3 +1,12 @@
+---
+title: Metropolis Chess Club
+emoji: ♟️
+colorFrom: indigo
+colorTo: gray
+sdk: docker
+pinned: false
+---
+
 # Metropolis Chess Club
 
 An agentic chess character system for the virtual city Metropolis.
