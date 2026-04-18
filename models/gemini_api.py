@@ -12,6 +12,7 @@ Handles:
 import json
 import asyncio
 import logging
+from concurrent.futures import ThreadPoolExecutor
 from typing import Optional, Dict, Any, List
 from datetime import datetime
 import google.generativeai as genai
@@ -93,6 +94,7 @@ class GeminiClient:
 
         genai.configure(api_key=self.api_key)
         self.client = genai.GenerativeModel(self.model)
+        self._executor = ThreadPoolExecutor(max_workers=4, thread_name_prefix="gemini")
         self.call_count = 0
         self.error_count = 0
 
@@ -165,9 +167,9 @@ class GeminiClient:
 
         Gemini doesn't have native async support, so we run it in a thread pool.
         """
-        loop = asyncio.get_event_loop()
+        loop = asyncio.get_running_loop()
         return await loop.run_in_executor(
-            None,
+            self._executor,
             lambda: self.client.generate_content(prompt).text
         )
 

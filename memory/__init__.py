@@ -7,13 +7,19 @@ Includes:
 - Memory retrieval and storage
 """
 
-from memory.weaviate_client import WeaviateClient
-from memory.schemas import Memory, MemoryType, ConversationMessage, PlayerProfile
+from memory.schemas import Memory, MemoryType
+
+def __getattr__(name):
+    if name == "WeaviateClient":
+        try:
+            from memory.weaviate_client import WeaviateClient
+            return WeaviateClient
+        except ImportError:
+            return None
+    raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
 
 __all__ = [
     "WeaviateClient",
     "Memory",
     "MemoryType",
-    "ConversationMessage",
-    "PlayerProfile",
 ]

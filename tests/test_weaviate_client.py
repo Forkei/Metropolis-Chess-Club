@@ -14,7 +14,8 @@ try:
     from memory.weaviate_client import WeaviateClient
     from memory.schemas import MemoryType
     HAS_WEAVIATE = True
-except ImportError:
+except (ImportError, KeyError):
+    # KeyError can occur from transformers dependency version check
     HAS_WEAVIATE = False
 
 

@@ -79,14 +79,12 @@ class ClaudeClient:
             Parsed JSON response with action, content, tone, etc.
         """
         self.call_count += 1
-        full_prompt = self._build_full_prompt(system_prompt, user_prompt)
 
         for attempt in range(self.max_retries):
             try:
                 logger.debug(f"Claude API call #{self.call_count}, attempt {attempt + 1}")
 
-                # Call Claude with JSON output mode
-                loop = asyncio.get_event_loop()
+                loop = asyncio.get_running_loop()
                 response = await loop.run_in_executor(
                     None,
                     lambda: self.client.messages.create(

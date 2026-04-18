@@ -51,3 +51,9 @@ weaviate_data/
 # Logs
 *.log
 logs/
+
+# Claude Code
+.claude/
+
+# Data (dynamic memories reset on deploy anyway)
+data/dynamic_memories.json

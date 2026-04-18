@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Metropolis Chess Club</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;1,400&family=Courier+Prime&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/static/style.css?v=10">
+    <script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
+</head>
+<body>
+
+<!-- Global mute button — visible on all screens -->
+<button id="mute-btn-global" class="mute-btn-global" title="Toggle sound">♪</button>
+
+<!-- ═══════════════════ SETUP ═══════════════════ -->
+<div id="setup-screen" class="screen active">
+    <div class="setup-bg"></div>
+    <div class="setup-noise"></div>
+    <div class="setup-card">
+        <div class="setup-glyph">♟</div>
+        <h1 class="setup-title">Metropolis<br>Chess Club</h1>
+        <div class="setup-rule"></div>
+        <p class="setup-sub">Viktor Petrov · Est. 1987</p>
+
+        <div class="setup-form">
+
+            <!-- Mode selector -->
+            <label class="setup-label">Game mode</label>
+            <div class="mode-row">
+                <button class="mode-btn active" data-mode="vs_viktor">
+                    <span class="mode-title">vs Viktor</span>
+                    <span class="mode-desc">AI opponent</span>
+                </button>
+                <button class="mode-btn" data-mode="vs_human">
+                    <span class="mode-title">vs Human</span>
+                    <span class="mode-desc">local 2-player</span>
+                </button>
+                <button class="mode-btn coming-soon" data-mode="ai_vs_ai" disabled>
+                    <span class="mode-title">AI vs AI</span>
+                    <span class="mode-desc">coming soon</span>
+                </button>
+            </div>
+
+            <!-- Player names -->
+            <label class="setup-label" id="name-label">Your name</label>
+            <input id="player-name" class="setup-input" type="text"
+                   placeholder="Enter your name" autocomplete="off" maxlength="30">
+
+            <!-- Second player name — shown for vs_human -->
+            <div id="player2-row" style="display:contents;">
+                <label class="setup-label" id="player2-label" style="display:none">Black player name</label>
+                <input id="player2-name" class="setup-input" type="text"
+                       placeholder="Black" autocomplete="off" maxlength="30"
+                       style="display:none">
+            </div>
+
+            <!-- Difficulty — shown for vs_viktor -->
+            <div id="difficulty-row">
+                <label class="setup-label">Difficulty</label>
+                <div class="diff-row">
+                    <button class="diff-btn" data-depth="1">
+                        <span class="diff-title">Beginner</span>
+                    </button>
+                    <button class="diff-btn active" data-depth="3">
+                        <span class="diff-title">Club</span>
+                    </button>
+                    <button class="diff-btn" data-depth="4">
+                        <span class="diff-title">Master</span>
+                    </button>
+                </div>
+            </div>
+
+            <button id="start-btn" class="btn-enter">Enter the Club</button>
+        </div>
+
+        <blockquote class="setup-quote" id="viktor-quote">
+            <p>"I have beaten men who thought they understood chess.<br>Sit down. Prove me wrong."</p>
+            <footer>— V. Petrov, Minsk, 1998</footer>
+        </blockquote>
+    </div>
+</div>
+
+<!-- ═══════════════════ GAME ═══════════════════ -->
+<div id="game-screen" class="screen">
+    <div class="game-layout">
+
+        <!-- ── BOARD PANEL ── -->
+        <div class="board-panel">
+
+            <!-- Top player bar -->
+            <div class="player-bar">
+                <div class="player-bar-left">
+                    <span id="top-piece" class="pbar-piece dark-piece">♚</span>
+                    <div class="pbar-info">
+                        <span id="top-name" class="pbar-name">Viktor Petrov</span>
+                        <span id="top-sub" class="pbar-sub">Black</span>
+                    </div>
+                    <div id="top-captured" class="captured-pieces"></div>
+                </div>
+                <div id="phase-badge" class="phase-badge">Opening</div>
+            </div>
+
+            <!-- BOARD SCENE -->
+            <div class="board-scene-wrap">
+                <div class="board-scene" id="board-scene">
+                    <div class="board-3d" id="board-3d">
+                        <div id="chess-board" class="board-grid"></div>
+                        <div class="board-side board-side-s"></div>
+                        <div class="board-side board-side-e"></div>
+                        <div class="board-side board-side-n"></div>
+                        <div class="board-side board-side-w"></div>
+                        <div class="board-side board-side-b"></div>
+                    </div>
+                </div>
+                <div class="board-hint" id="board-hint">drag to move · mouse for parallax</div>
+            </div>
+
+            <!-- Bottom player bar -->
+            <div class="player-bar">
+                <div class="player-bar-left">
+                    <span id="bottom-piece" class="pbar-piece light-piece">♔</span>
+                    <div class="pbar-info">
+                        <span id="bottom-name" class="pbar-name">You</span>
+                        <span id="turn-status" class="pbar-sub">White · Your turn</span>
+                    </div>
+                    <div id="bottom-captured" class="captured-pieces"></div>
+                </div>
+                <div id="check-badge" class="check-badge" style="display:none">CHECK</div>
+            </div>
+
+            <!-- Move log -->
+            <div class="move-log-bar">
+                <div id="move-log" class="move-log-inner"></div>
+            </div>
+
+            <div class="board-footer-row">
+                <span id="move-counter" class="move-counter">Move 0</span>
+                <button id="resign-btn" class="btn-resign">Resign</button>
+            </div>
+
+            <!-- Result banner — shown in-place when game ends, no screen jump -->
+            <div id="result-banner" class="result-banner" style="display:none">
+                <div class="result-banner-inner">
+                    <span id="result-banner-icon" class="result-banner-icon">♟</span>
+                    <span id="result-banner-text" class="result-banner-text">Game Over</span>
+                    <button id="play-again-inline" class="btn-play-again">Play Again</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- ── CHAT / SIDE PANEL ── -->
+        <div class="chat-panel">
+            <div class="chat-hdr">
+                <div class="viktor-avatar" id="viktor-avatar">
+                    <img src="/static/viktor.png" class="viktor-portrait" alt="Viktor Petrov">
+                </div>
+                <div class="chat-hdr-info">
+                    <span id="chat-hdr-title" class="chat-hdr-title">Metropolis Chess Club</span>
+                    <span class="chat-hdr-sub">Private table</span>
+                </div>
+                <div class="chat-hdr-right">
+                    <div class="chat-hdr-dot"></div>
+                </div>
+            </div>
+
+            <div id="chat-messages" class="chat-msgs"></div>
+
+            <div class="chat-foot">
+                <div class="stats-row">
+                    <div class="stat"><span class="stat-lbl">Time</span><span id="stat-duration" class="stat-val">0:00</span></div>
+                    <div class="stat"><span class="stat-lbl">Moves</span><span id="stat-moves" class="stat-val">0</span></div>
+                    <div class="stat"><span class="stat-lbl">Chat</span><span id="stat-messages" class="stat-val">0</span></div>
+                </div>
+                <div id="chat-input-row" class="chat-input-row">
+                    <input id="message-input" class="chat-input" type="text"
+                           placeholder="Say something to Viktor..." autocomplete="off">
+                    <button id="send-btn" class="btn-send">↑</button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ═══════════════════ GAME OVER ═══════════════════ -->
+<div id="game-over-screen" class="screen">
+    <div class="setup-bg"></div>
+    <div class="setup-noise"></div>
+    <div class="setup-card">
+        <div class="setup-glyph" id="result-icon">♟</div>
+        <h1 class="setup-title" id="result-text">Game Over</h1>
+        <div class="setup-rule"></div>
+        <p class="setup-sub" id="result-detail"></p>
+        <button id="play-again-btn" class="btn-enter" style="margin-top:2rem">Play Again</button>
+    </div>
+</div>
+
+<!-- ═══════════════════ PROMOTION DIALOG ═══════════════════ -->
+<div id="promo-overlay" class="promo-overlay" style="display:none">
+    <div class="promo-card">
+        <p class="promo-label">Promote pawn</p>
+        <div class="promo-choices" id="promo-choices"></div>
+    </div>
+</div>
+
+<script src="/static/howler.min.js"></script>
+<script src="/static/sounds.js?v=4"></script>
+<script src="/static/game.js?v=10"></script>
+</body>
+</html>
