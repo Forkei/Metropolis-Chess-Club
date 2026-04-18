@@ -251,7 +251,7 @@ class GameSession:
 
 @app.get("/")
 async def index(request: Request):
-    return templates.TemplateResponse("index.html", {"request": request})
+    return templates.TemplateResponse(request, "index.html")
 
 @app.get("/debug")
 async def debug_view():
